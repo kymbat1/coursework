@@ -35,14 +35,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         emailController.text.isEmpty ||
         passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill in all fields")),
+        const SnackBar(content: Text("Пожалуйста, заполните все поля")),
       );
       return;
     }
 
     if (passwordController.text != confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Passwords do not match")),
+        const SnackBar(content: Text("Пароли не совпадают")),
       );
       return;
     }
@@ -50,34 +50,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => isLoading = true);
 
     try {
-      // 🔹 Используем новый AuthService с Java-бэкендом
+      // 🔹 Используем AuthService с Firebase
       await widget.authService.register(
         nameController.text.trim(),
         emailController.text.trim(),
         passwordController.text.trim(),
       );
 
-      if (context.mounted) {
-        // Возвращаемся на LoginScreen
-        Navigator.pop(context);
-      }
+      if (!mounted) return;
+
+      // Успешная регистрация
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Регистрация прошла успешно")),
+      );
+
+      // Возвращаемся на LoginScreen
+      Navigator.pop(context);
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Registration failed: ${e.toString()}")),
-        );
+      if (!mounted) return;
+
+      String message = "Ошибка регистрации";
+      if (e.toString().contains('email-already-in-use')) {
+        message = "Пользователь с этим email уже существует";
+      } else if (e.toString().contains('invalid-email')) {
+        message = "Некорректный email";
+      } else if (e.toString().contains('weak-password')) {
+        message = "Пароль слишком простой";
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     } finally {
-      if (context.mounted) {
-        setState(() => isLoading = false);
-      }
+      if (!mounted) return;
+      setState(() => isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF),
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
@@ -101,6 +114,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 32),
+
+              // Name
               TextField(
                 controller: nameController,
                 decoration: InputDecoration(
@@ -110,6 +125,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Email
               TextField(
                 controller: emailController,
                 decoration: InputDecoration(
@@ -119,6 +136,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Password
               TextField(
                 controller: passwordController,
                 obscureText: !isPasswordVisible,
@@ -137,6 +156,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Confirm Password
               TextField(
                 controller: confirmPasswordController,
                 obscureText: !isConfirmVisible,
@@ -155,14 +176,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 28),
+
+              // Sign Up Button
               isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFFF24187)))
+                  ? const Center(
+                  child: CircularProgressIndicator(color: Color(0xFFF24187)))
                   : ElevatedButton(
                 onPressed: register,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFF24187),
                   minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                   elevation: 4,
                 ),
                 child: const Text(
@@ -173,7 +198,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       fontWeight: FontWeight.w600),
                 ),
               ),
+
               const SizedBox(height: 16),
+
+              // Back to login
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -183,7 +211,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: const Text(
                       "Sign In",
                       style: TextStyle(
-                          color: Color(0xFFF24187), fontWeight: FontWeight.bold),
+                          color: Color(0xFFF24187),
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],

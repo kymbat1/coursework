@@ -1,12 +1,13 @@
 // lib/screens/auth/login_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'register_screen.dart';
 import '../../services/auth_service.dart';
+import '../home/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final AuthService authService;
+
   const LoginScreen({super.key, required this.authService});
 
   @override
@@ -18,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
 
   bool isLoading = false;
+  bool isPasswordVisible = false;
 
   @override
   void dispose() {
@@ -42,21 +44,32 @@ class _LoginScreenState extends State<LoginScreen> {
         emailController.text.trim(),
         passwordController.text.trim(),
       );
-    } on FirebaseAuthException catch (e) {
+
       if (!mounted) return;
-      String message;
-      switch (e.code) {
-        case 'user-not-found':
-          message = 'Пользователь не найден.';
-          break;
-        case 'wrong-password':
-          message = 'Неверный пароль.';
-          break;
-        case 'invalid-email':
-          message = 'Некорректный email.';
-          break;
-        default:
-          message = e.message ?? 'Ошибка входа.';
+
+      // ✅ Успешный вход
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Вход выполнен успешно")),
+      );
+
+      // 🔥 Переход на HomeScreen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => HomeScreen(), // убрали const
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      String message = "Ошибка входа";
+
+      if (e.toString().contains('user-not-found')) {
+        message = "Пользователь не найден";
+      } else if (e.toString().contains('wrong-password')) {
+        message = "Неверный пароль";
+      } else if (e.toString().contains('invalid-email')) {
+        message = "Некорректный email";
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -79,7 +92,11 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.favorite, size: 80, color: Color(0xFFF24187)),
+                const Icon(
+                  Icons.favorite,
+                  size: 80,
+                  color: Color(0xFFF24187),
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   "Welcome Back 👋",
@@ -108,27 +125,37 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 16),
 
                 // Password
                 TextField(
                   controller: passwordController,
-                  obscureText: true,
+                  obscureText: !isPasswordVisible,
                   decoration: InputDecoration(
                     labelText: "Password",
                     prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        isPasswordVisible
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                      ),
+                      onPressed: () {
+                        setState(() => isPasswordVisible = !isPasswordVisible);
+                      },
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 24),
 
                 // Button
                 isLoading
-                    ? const CircularProgressIndicator(color: Color(0xFFF24187))
+                    ? const CircularProgressIndicator(
+                  color: Color(0xFFF24187),
+                )
                     : ElevatedButton(
                   onPressed: login,
                   style: ElevatedButton.styleFrom(
@@ -141,19 +168,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: const Text(
                     "Sign In",
-                    style: TextStyle(color: Colors.white, fontSize: 16),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
-
                 const SizedBox(height: 16),
 
+                // Переход на регистрацию
                 TextButton(
                   onPressed: () {
-                    // 💡 Передаем authService в RegisterScreen
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => RegisterScreen(authService: widget.authService)),
+                        builder: (_) => RegisterScreen(
+                          authService: widget.authService,
+                        ),
+                      ),
                     );
                   },
                   child: const Text(

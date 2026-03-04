@@ -1,98 +1,106 @@
-// lib/services/auth_service.dart
-
-import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  // 🔹 Адрес вашего Java-бэкенда
-  // Для Android эмулятора: 10.0.2.2
-  // Для веба: localhost
-  static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8080';
-    } else {
-      return 'http://10.0.2.2:8080';
-    }
-  }
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // 🔹 Сохраняем JWT
-  Future<void> saveToken(String token) async {
+  /// ===============================
+  /// 🔐 TOKEN (UID) STORAGE
+  /// ===============================
+
+  Future<void> saveToken(String uid) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('jwt', token);
+    await prefs.setString('uid', uid);
   }
 
-  // 🔹 Получаем JWT
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('jwt');
+    return prefs.getString('uid');
   }
 
-  // 🔹 Удаляем JWT (выход)
   Future<void> deleteToken() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('jwt');
+    await prefs.remove('uid');
   }
 
-  // 🔹 Проверка текущего пользователя (наличие JWT)
-  Future<String> currentUser() async {
-    final token = await getToken();
-    return token ?? '';
+  Future<String?> currentUser() async {
+    return await getToken();
   }
 
-  // 🔹 Регистрация нового пользователя
+  /// ===============================
+  /// 🟣 REGISTER
+  /// ===============================
+
   Future<void> register(String name, String email, String password) async {
-    final url = Uri.parse('$baseUrl/api/auth/register');
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password.trim(),
+      );
 
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        if (kIsWeb) 'Access-Control-Allow-Origin': '*', // Для веба (CORS)
-      },
-      body: jsonEncode({
-        'name': name,
-        'email': email,
-        'password': password,
-      }),
-    );
+      final user = credential.user;
 
-    if (response.statusCode != 200) {
-      throw Exception('Registration failed: ${response.body}');
-    }
-  }
-
-  // 🔹 Вход пользователя
-  Future<void> signIn(String email, String password) async {
-    final url = Uri.parse('$baseUrl/api/auth/login');
-
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        if (kIsWeb) 'Access-Control-Allow-Origin': '*', // Для веба (CORS)
-      },
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final token = data['token'] as String?;
-      if (token == null) {
-        throw Exception('JWT token missing in response');
+      if (user == null) {
+        throw Exception('user-null');
       }
-      await saveToken(token);
-    } else {
-      throw Exception('Login failed: ${response.body}');
+
+      // Сохраняем UID
+      await saveToken(user.uid);
+
+      // Сохраняем данные в Firestore
+      await _firestore.collection('users').doc(user.uid).set({
+        'name': name.trim(),
+        'email': email.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+    } on FirebaseAuthException catch (e) {
+      print("🔥 FIREBASE REGISTER ERROR CODE: ${e.code}");
+      print("🔥 FIREBASE REGISTER MESSAGE: ${e.message}");
+      throw Exception(e.code);
+    } catch (e) {
+      print("🔥 UNKNOWN REGISTER ERROR: $e");
+      throw Exception('unknown-error');
     }
   }
 
-  // 🔹 Выход
+  /// ===============================
+  /// 🔵 LOGIN
+  /// ===============================
+
+  Future<void> signIn(String email, String password) async {
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password.trim(),
+      );
+
+      final user = credential.user;
+
+      if (user == null) {
+        throw Exception('user-null');
+      }
+
+      await saveToken(user.uid);
+
+    } on FirebaseAuthException catch (e) {
+      print("🔥 FIREBASE LOGIN ERROR CODE: ${e.code}");
+      print("🔥 FIREBASE LOGIN MESSAGE: ${e.message}");
+      throw Exception(e.code);
+    } catch (e) {
+      print("🔥 UNKNOWN LOGIN ERROR: $e");
+      throw Exception('unknown-error');
+    }
+  }
+
+  /// ===============================
+  /// 🚪 LOGOUT
+  /// ===============================
+
   Future<void> signOut() async {
+    await _auth.signOut();
     await deleteToken();
   }
 }

@@ -112,7 +112,9 @@ class PaymentSummaryScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (context) => const TransactionSuccessScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => HomeScreen(),
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(

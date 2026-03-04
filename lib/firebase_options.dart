@@ -59,7 +59,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBHmsZYU3n14dJnHBJIh9qabfYq3psMjr8',
-    appId: '1:1062961311521:android:090c30abc2fe9230a39860',
+    appId: '1:1062flutter pub get961311521:android:090c30abc2fe9230a39860',
     messagingSenderId: '1062961311521',
     projectId: 'qamqor-72e53',
     storageBucket: 'qamqor-72e53.firebasestorage.app',
